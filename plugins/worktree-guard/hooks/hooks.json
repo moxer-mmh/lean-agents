@@ -1,0 +1,29 @@
+{
+  "description": "Worktree Guard — prevents common git mistakes in worktrees",
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/worktree_guard.py pre",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 ${CLAUDE_PLUGIN_ROOT}/hooks/worktree_guard.py post",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

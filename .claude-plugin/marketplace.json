@@ -1,14 +1,14 @@
 {
   "$schema": "https://anthropic.com/claude-code/marketplace.schema.json",
-  "name": "lean-agents",
-  "description": "Lightweight subagent replacements for Claude Code users with many MCP servers. Fixes 'prompt too long' errors when spawning Explore, Plan, and general-purpose agents.",
+  "name": "claude-toolbox",
+  "description": "Claude Code plugins for multi-agent workflows: lean subagents (MCP bloat fix) and worktree-guard (safe git operations in worktrees).",
   "owner": {
     "name": "moxer-mmh"
   },
   "plugins": [
     {
       "name": "lean-agents",
-      "source": "./",
+      "source": "./plugins/lean-agents",
       "description": "Lightweight subagent replacements that avoid context bloat from inherited MCP tool schemas. Provides Sonnet variants with tool filtering and Opus safe variants with 1M context.",
       "version": "1.0.0",
       "author": {
@@ -29,6 +29,31 @@
         "agents",
         "lightweight",
         "mcp-workaround"
+      ]
+    },
+    {
+      "name": "worktree-guard",
+      "source": "./plugins/worktree-guard",
+      "description": "Automatic safety guards for git worktrees: blocks bad pushes, wrong branches, and provides safe sync/push/status commands. Essential for multi-agent workflows with one agent per worktree.",
+      "version": "1.0.0",
+      "author": {
+        "name": "moxer-mmh"
+      },
+      "homepage": "https://github.com/moxer-mmh/lean-agents",
+      "repository": "https://github.com/moxer-mmh/lean-agents",
+      "license": "MIT",
+      "keywords": [
+        "worktree",
+        "git",
+        "safety",
+        "hooks",
+        "multi-agent"
+      ],
+      "category": "workflow",
+      "tags": [
+        "git",
+        "worktree",
+        "safety-guards"
       ]
     }
   ]

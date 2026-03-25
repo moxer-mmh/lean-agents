@@ -1,14 +1,12 @@
-# Lean Agents
+# Claude Toolbox
 
-Lightweight subagent replacements for Claude Code users with many MCP servers configured.
+A Claude Code plugin marketplace with tools for multi-agent workflows.
 
-## Problem
+## Plugins
 
-When you have 10+ MCP servers configured (Supabase, PostHog, Playwright, GitHub, Slack, etc.), built-in subagents (Explore, Plan, general-purpose) fail with **"prompt is too long"** because they inherit all MCP tool schemas from the parent session. With 300+ tools, the schemas alone can exceed Sonnet's 200k context limit before the agent even starts.
+### lean-agents
 
-See: [#37793](https://github.com/anthropics/claude-code/issues/37793), [#31623](https://github.com/anthropics/claude-code/issues/31623)
-
-## Solution
+Lightweight subagent replacements that avoid context bloat from inherited MCP tool schemas. When you have many MCP servers configured, Claude Code's built-in agents (Explore, Plan, general-purpose) can fail because the inherited tool schemas exceed context limits. These agents use explicit tool allowlists or Opus's 1M context to work around that.
 
 This plugin provides lightweight agent replacements that use explicit `tools:` allowlists to try to reduce or avoid inheriting MCP tool schemas. This is a runtime-dependent workaround rather than a guaranteed fix (see [Limitations](#limitations)):
 
@@ -21,40 +19,90 @@ This plugin provides lightweight agent replacements that use explicit `tools:` a
 | `lean-plan-safe` | Opus | All (1M context) | Plan |
 | `lean-general-safe` | Opus | All (1M context) | general-purpose |
 
-### Which variant to use?
-
 - **Standard variants** (`lean-explore`, `lean-plan`, `lean-general`): Use Sonnet with a restricted tool set. Cheaper and faster. Try these first.
 - **Safe variants** (`lean-explore-safe`, `lean-plan-safe`, `lean-general-safe`): Use Opus with 1M context window. Much less likely to hit prompt limits. Use these if the standard variants still fail.
 
+### worktree-guard
+
+Automatic safety guards for git worktrees. Claude Code has well-documented issues with worktrees: wrong branch detection, push to wrong upstream, broken pull/rebase, and `git checkout` corrupting worktree state. This plugin fixes all of that with automatic hooks and safe commands.
+
+**Hooks (automatic, no user action needed):**
+- Blocks `git push` to main/master
+- Blocks `git push` without upstream tracking (suggests `git push -u origin HEAD`)
+- Warns on bare `git pull` in worktrees (suggests fetch + rebase)
+- Blocks `git checkout <branch>` in worktrees (explains to use `cd`)
+- Blocks `git commit` on main/master
+- Blocks git operations on detached HEAD
+- Shows branch tracking info after push/commit
+
+**Commands:**
+- `/wt-sync` — Safe rebase from main (fetch + rebase, auto-stash)
+- `/wt-push` — Push with correct upstream tracking
+- `/wt-status` — Worktree health check (tracking, ahead/behind, all worktrees)
+- `/wt-switch` — List worktrees and navigate between them
+
+**Skill:**
+- `worktree-safety` — Teaches Claude Code worktree-safe git patterns (auto-activates when in a worktree)
+
+**Agent:**
+- `worktree-doctor` — Diagnoses and fixes worktree issues (wrong upstream, stale worktrees, detached HEAD)
+
 ## Installation
 
-### From the marketplace (canonical source: [moxer-mmh/lean-agents](https://github.com/moxer-mmh/lean-agents))
+### From the marketplace
 
 1. Inside Claude Code, run `/plugin` and select "Add Marketplace"
 2. Enter `moxer-mmh/lean-agents`
-3. Install the `lean-agents` plugin from the marketplace
+3. Install `lean-agents` and/or `worktree-guard` from the marketplace
 4. Restart Claude Code
+
+### Manual (settings.json)
+
+Add this marketplace to your Claude Code settings:
+
+```json
+// ~/.claude/settings.json
+{
+  "extraKnownMarketplaces": {
+    "claude-toolbox": {
+      "source": {
+        "source": "git",
+        "url": "https://github.com/moxer-mmh/lean-agents.git"
+      }
+    }
+  },
+  "enabledPlugins": {
+    "lean-agents@claude-toolbox": true,
+    "worktree-guard@claude-toolbox": true
+  }
+}
+```
+
+Or enable selectively — you can use one without the other.
 
 ### From this repository (local testing)
 
 If you've cloned this repo, you can point Claude Code at the local directory:
 
 ```bash
-# Copy to your user agents directory for immediate use
+# Copy lean-agents to your user agents directory for immediate use
 cp plugins/lean-agents/agents/*.md ~/.claude/agents/
 ```
 
-## Usage
+## How It Works
 
-The agents are available as subagent types when Claude spawns agents:
+### worktree-guard hooks
 
-```
-# In your prompt to Claude:
-"Use the lean-explore agent to search for authentication code"
-"Use lean-plan-safe to design the implementation"
-```
+The hooks run automatically on every `Bash` tool call that contains a git command. They read the tool input from stdin, check for dangerous patterns, and either:
+- **Block** (exit code 2) — prevents the operation with an explanation
+- **Warn** (stdout JSON with `systemMessage`) — allows but injects guidance
+- **Allow** (exit code 0) — no-op for non-git commands
 
-Claude will automatically use these agents when it detects them as the best match for the task, or you can explicitly request them.
+Performance impact is negligible — the hook exits immediately for non-git commands.
+
+### Worktree detection
+
+The plugin detects worktrees by checking if `.git` is a **file** (worktrees) vs a **directory** (main repo). Some guards only activate in worktrees (e.g., checkout blocking), while others apply everywhere (e.g., push-to-main blocking).
 
 ## Limitations
 
@@ -63,6 +111,12 @@ Claude will automatically use these agents when it detects them as the best matc
 - Standard variants are designed for pure codebase work without MCP tools. Safe variants may have MCP access depending on the runtime's tool inheritance behavior
 - This is a workaround, not a fix. The proper solution is for Claude Code to support controllable subagent context ([#31623](https://github.com/anthropics/claude-code/issues/31623))
 
-## Contributing
+## Requirements
 
-If you find improvements or additional agent variants that help, please open a PR.
+- Python 3.8+ (for worktree-guard hooks)
+- Git 2.20+ (for worktree support)
+- Claude Code
+
+## License
+
+MIT

@@ -1,0 +1,8 @@
+{
+  "name": "worktree-guard",
+  "version": "1.0.0",
+  "description": "Automatic safety guards for git worktrees. Blocks bad pushes, wrong branches, checkout in worktrees, and provides safe sync/push/status commands. Essential for multi-agent workflows with one agent per worktree.",
+  "author": {
+    "name": "moxer-mmh"
+  }
+}
