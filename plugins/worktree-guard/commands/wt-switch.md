@@ -1,37 +1,34 @@
 ---
-description: List all worktrees and help navigate to a different one
-allowed-tools: Bash(git:*), Bash(ls:*)
+description: List all worktrees and navigate to a different one, or checkout a PR
+allowed-tools: Bash(wt:*), Bash(git:*), Bash(cd:*)
 ---
 
 # Worktree Switch
 
-List all active worktrees and help the user navigate to a different one. In worktrees, you NEVER use `git checkout` to switch branches — you `cd` to the other worktree.
-
-## Context
-
-- Current location: !`pwd`
-- Current branch: !`git branch --show-current`
+List all active worktrees and navigate to a different one. Supports checking out PRs into worktrees.
 
 ## Steps
 
-1. List all worktrees with their branches:
+1. List all worktrees:
    ```bash
-   git worktree list
+   wt list
    ```
 
-2. Present each worktree as a numbered option:
-   ```
-   Active worktrees:
-   1. /path/to/main           → main
-   2. /path/to/worktree-1     → agent/mobile/KAN-132-feature
-   3. /path/to/worktree-2     → agent/backend/KAN-141-stripe
-
-   Current: #2 (agent/mobile/KAN-132-feature)
+2. To switch to an existing worktree:
+   ```bash
+   cd <worktree-path>
    ```
 
-3. Tell the user to navigate with `cd`:
-   ```
-   To switch: cd /path/to/worktree-N
+3. To checkout a PR into a worktree:
+   ```bash
+   wt checkout pr:<number>
+   # Then cd to the printed path
    ```
 
-**IMPORTANT:** Never use `git checkout <branch>` or `git switch <branch>` in a worktree. Each worktree is locked to its branch. Navigate between worktrees using `cd`.
+4. To checkout a branch into a worktree:
+   ```bash
+   wt checkout <branch-name>
+   # Then cd to the printed path
+   ```
+
+**IMPORTANT:** Never use `git checkout <branch>` or `git switch <branch>` in a worktree. Each worktree is locked to its branch. Use `wt checkout` to create a new worktree, or `cd` to navigate between existing ones.

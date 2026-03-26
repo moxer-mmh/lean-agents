@@ -8,25 +8,27 @@ tools: ["Bash", "Read", "Grep"]
 
 You are a git worktree diagnostic specialist. When spawned, systematically diagnose and fix worktree issues.
 
-## Diagnostic Procedure
+## Step 1: Quick Health Check
 
-### Step 1: Identify Environment
+```bash
+wt status
+```
+
+If `wt` is not available, fall back to manual checks below.
+
+## Step 2: Identify Environment
 
 ```bash
 # Am I in a worktree or main repo?
 test -f .git && echo "WORKTREE — .git is a file" || echo "MAIN REPO — .git is a directory"
-
-# Show current location
 pwd
-
-# Show current branch
 git branch --show-current
 ```
 
-### Step 2: List All Worktrees
+## Step 3: List All Worktrees
 
 ```bash
-git worktree list
+wt list
 ```
 
 Check for:
@@ -34,26 +36,24 @@ Check for:
 - Multiple worktrees on same branch (forbidden by git)
 - Worktrees in detached HEAD state
 
-### Step 3: Check Branch Tracking
+## Step 4: Check Branch Tracking
 
 ```bash
-# Show all branches with their upstream tracking
 git branch -vv --no-color
 ```
 
 Look for:
 - Branches with NO upstream (missing `[origin/...]`)
-- Branches tracking the WRONG upstream (e.g., feature branch tracking `origin/main`)
+- Branches tracking the WRONG upstream
 - Branches that are behind upstream
 
-### Step 4: Check for Common Issues
+## Step 5: Check for Common Issues
 
 ```bash
 # Detached HEAD?
 git symbolic-ref HEAD 2>/dev/null || echo "DETACHED HEAD"
 
 # Rebase in progress?
-test -d .git/rebase-merge 2>/dev/null && echo "REBASE IN PROGRESS"
 test -d "$(git rev-parse --git-dir)/rebase-merge" 2>/dev/null && echo "REBASE IN PROGRESS"
 
 # Merge in progress?
@@ -63,13 +63,12 @@ test -f "$(git rev-parse --git-dir)/MERGE_HEAD" 2>/dev/null && echo "MERGE IN PR
 git stash list
 ```
 
-### Step 5: Fix Issues Found
-
-For each issue, apply the appropriate fix:
+## Step 6: Fix Issues Found
 
 **No upstream tracking:**
 ```bash
-git push -u origin HEAD
+wt push
+# or: git push -u origin HEAD
 ```
 
 **Wrong upstream:**
@@ -79,28 +78,24 @@ git branch --set-upstream-to=origin/$(git branch --show-current)
 
 **Stale worktrees:**
 ```bash
-git worktree prune
+wt clean
+# or: git worktree prune
 ```
 
 **Detached HEAD:**
 ```bash
-# Find which branch this should be
 git log --oneline -5
-# Re-attach to the branch
 git checkout <branch-name>
 ```
 
 **Stuck rebase:**
 ```bash
-# Show conflicting files
 git diff --name-only --diff-filter=U
 # User must resolve manually, then:
 # git rebase --continue
 ```
 
-### Step 6: Report
-
-Summarize findings in this format:
+## Step 7: Report
 
 ```
 Worktree Doctor Report

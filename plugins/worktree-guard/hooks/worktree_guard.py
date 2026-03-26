@@ -201,7 +201,7 @@ def pre_tool_use(cmd):
 def post_tool_use(cmd):
     """Run PostToolUse informational checks."""
 
-    # After push: show tracking info
+    # After push: show tracking info + suggest wt push
     if is_git_command(cmd, "push"):
         tracking = git("branch", "-vv", "--no-color")
         if tracking:
@@ -211,13 +211,36 @@ def post_tool_use(cmd):
                     current = line
                     break
             if current:
-                warn(f"📡 Branch tracking after push:\n   {current.strip()}")
+                msg = f"📡 Branch tracking after push:\n   {current.strip()}"
+                if is_worktree() and not has_flag(cmd, "wt push"):
+                    msg += (
+                        "\n\n💡 TIP: Use `wt push` instead of raw git push "
+                        "in worktrees. It handles upstream tracking automatically."
+                    )
+                warn(msg)
+
+    # After pull: suggest wt sync
+    if is_git_command(cmd, "pull"):
+        if is_worktree():
+            warn(
+                "💡 TIP: Use `wt sync` instead of `git pull` in worktrees.\n"
+                "   It does fetch + rebase to keep linear history and avoid "
+                "tracking issues."
+            )
 
     # After commit: confirm branch
     if is_git_command(cmd, "commit"):
         branch = current_branch()
         if branch:
             warn(f"✅ Committed on branch: {branch}")
+
+    # After worktree add: suggest wt create
+    if is_git_command(cmd, "worktree add"):
+        warn(
+            "💡 TIP: Use `wt create <branch>` or `wt checkout <branch>` "
+            "instead of raw `git worktree add`.\n"
+            "   It handles directory naming, upstream tracking, and edge cases."
+        )
 
 
 # ─── Main ────────────────────────────────────────────────────────────────────

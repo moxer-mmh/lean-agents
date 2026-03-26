@@ -14,9 +14,19 @@ test -f .git && echo "WORKTREE" || echo "MAIN REPO"
 
 If `.git` is a file, ALL rules below are mandatory.
 
+## Primary Tool: `wt` CLI
+
+The `wt` command handles all worktree operations safely. **Always use `wt` instead of raw git worktree commands.**
+
+```bash
+wt help          # Show all available commands
+wt status        # Health check of current worktree
+wt list          # List all worktrees
+```
+
 ## Rules
 
-### 1. Push: ALWAYS use `-u origin HEAD`
+### 1. Push: use `wt push`
 
 ```bash
 # NEVER do this:
@@ -24,12 +34,12 @@ git push
 git push origin my-branch
 
 # ALWAYS do this:
-git push -u origin HEAD
+wt push
 ```
 
-**Why:** Worktrees often lack upstream tracking. `HEAD` resolves to the current branch name, ensuring the push targets the correct remote branch. The `-u` flag sets tracking for future operations.
+**Why:** `wt push` always uses `-u origin HEAD`, which sets upstream tracking correctly. Raw `git push` in worktrees often fails due to missing upstream tracking.
 
-### 2. Sync from main: fetch + rebase, NEVER bare pull
+### 2. Sync from main: use `wt sync`
 
 ```bash
 # NEVER do this:
@@ -37,15 +47,12 @@ git pull
 git pull origin main
 
 # ALWAYS do this:
-git fetch origin main
-git rebase origin/main
+wt sync
 ```
 
-**Why:** `git pull` in worktrees creates merge commits and can corrupt tracking. Fetch + rebase keeps linear history and avoids worktree-specific tracking bugs.
+**Why:** `wt sync` does `git fetch origin main && git rebase origin/main` with automatic stash/unstash. `git pull` creates merge commits and corrupts tracking in worktrees.
 
-Use `/wt-sync` for a safe one-command alternative.
-
-### 3. Branch switching: NEVER use git checkout or git switch
+### 3. Branch switching: use `wt checkout` or `cd`
 
 ```bash
 # NEVER do this in a worktree:
@@ -53,59 +60,72 @@ git checkout other-branch
 git switch other-branch
 
 # ALWAYS do this:
-cd /path/to/other/worktree
+wt checkout other-branch   # Creates/finds worktree, prints path
+cd /path/to/worktree       # Navigate to it
+
+# For PRs:
+wt checkout pr:42          # Fetches PR branch, creates worktree
 ```
 
-**Why:** Each worktree is locked to exactly one branch. Attempting to switch branches corrupts the worktree state. Navigate between worktrees using `cd`.
+**Why:** Each worktree is locked to exactly one branch. Attempting to switch branches corrupts the worktree state.
 
-Use `/wt-switch` to list available worktrees.
+### 4. Creating worktrees: use `wt create`
 
-### 4. Before every commit: verify branch
+```bash
+# NEVER do this:
+git worktree add /some/path -b branch-name origin/main
+
+# ALWAYS do this:
+wt create agent/mobile/KAN-132-feature
+wt create agent/backend/KAN-141-stripe origin/main
+```
+
+**Why:** `wt create` handles directory naming, upstream tracking, and fetches the latest main automatically.
+
+### 5. Before every commit: verify branch
 
 ```bash
 # Always check first:
-BRANCH=$(git branch --show-current)
-echo "Committing on: $BRANCH"
+git branch --show-current
 ```
 
 Block if on `main`, `master`, or if HEAD is detached (empty branch name).
 
-### 5. After creating a worktree: set upstream immediately
+### 6. Cleanup: use `wt clean`
 
 ```bash
-# After first commit in a new worktree:
-git push -u origin HEAD
-```
-
-This prevents all future push/pull tracking issues.
-
-### 6. Creating new worktrees
-
-```bash
-# From the main repo (not from inside another worktree):
-git worktree add /path/to/new-worktree -b branch-name origin/main
-```
-
-### 7. Cleaning up worktrees
-
-```bash
-# After merging a branch:
-git worktree remove /path/to/worktree
-git branch -d branch-name
+wt clean    # Prunes stale worktrees + deletes merged branches via gh-poi
 ```
 
 ## Quick Reference
 
 | Operation | Wrong | Right |
 |-----------|-------|-------|
-| Push | `git push` | `git push -u origin HEAD` |
-| Sync main | `git pull` | `git fetch origin main && git rebase origin/main` |
-| Switch branch | `git checkout X` | `cd /path/to/worktree-X` |
-| Check branch | _(skip)_ | `git branch --show-current` before commit |
+| Push | `git push` | `wt push` |
+| Sync main | `git pull` | `wt sync` |
+| Switch branch | `git checkout X` | `wt checkout X` then `cd` |
+| Create worktree | `git worktree add ...` | `wt create <branch>` |
+| Checkout PR | manual fetch + checkout | `wt checkout pr:42` |
+| Check health | manual git commands | `wt status` |
+| Cleanup | manual prune | `wt clean` |
 
 ## Available Commands
 
+- `/wt-checkout` — Create/switch to a worktree for a branch or PR
 - `/wt-sync` — Safe rebase from main
 - `/wt-push` — Push with correct upstream
 - `/wt-status` — Worktree health check
-- `/wt-switch` — Navigate between worktrees
+- `/wt-switch` — List and navigate between worktrees
+- `/wt-clean` — Prune stale worktrees and merged branches
+
+## Fallback (if `wt` is not installed)
+
+If `wt` command is not available, use these raw git equivalents:
+
+| Operation | Fallback |
+|-----------|----------|
+| Push | `git push -u origin HEAD` |
+| Sync | `git fetch origin main && git rebase origin/main` |
+| Create worktree | `git worktree add <path> -b <branch> origin/main` |
+| List | `git worktree list` |
+| Clean | `git worktree prune && gh poi` |

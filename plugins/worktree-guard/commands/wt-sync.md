@@ -1,46 +1,27 @@
 ---
 description: Safely sync current worktree branch with main (fetch + rebase, no merge commits)
-allowed-tools: Bash(git:*)
+allowed-tools: Bash(wt:*), Bash(git:*)
 ---
 
 # Worktree Sync
 
-Safely rebase the current worktree branch onto the latest main. This avoids the merge commits and tracking issues that `git pull` causes in worktrees.
-
-## Context
-
-- Current branch: !`git branch --show-current`
-- Worktree check: !`test -f .git && echo "IN WORKTREE" || echo "MAIN REPO"`
-- Uncommitted changes: !`git status --porcelain`
+Safely rebase the current worktree branch onto the latest main.
 
 ## Steps
 
-1. If there are uncommitted changes, stash them first:
+1. Run the sync:
    ```bash
-   git stash push -m "wt-sync: auto-stash before rebase"
+   wt sync
    ```
 
-2. Fetch latest main from remote:
+2. If `wt` is not available, fall back to:
    ```bash
+   git stash push -m "wt-sync: auto-stash" 2>/dev/null
    git fetch origin main
-   ```
-
-3. Rebase current branch onto main:
-   ```bash
    git rebase origin/main
+   git stash pop 2>/dev/null
    ```
 
-4. If rebase has conflicts, stop and inform the user. Do NOT force or abort automatically.
+3. If rebase has conflicts, stop and inform the user. Do NOT force or abort automatically.
 
-5. If changes were stashed in step 1, pop the stash:
-   ```bash
-   git stash pop
-   ```
-
-6. Show final status:
-   ```bash
-   git log --oneline origin/main..HEAD
-   git status --short
-   ```
-
-**IMPORTANT:** Never use `git pull` in a worktree. Always use `git fetch` + `git rebase`.
+**IMPORTANT:** Never use `git pull` in a worktree. Always use `wt sync` or `git fetch` + `git rebase`.
